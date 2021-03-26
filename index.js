@@ -259,7 +259,7 @@ module.exports =  class TinyFox {
 
 
     async modifyERC721LedgerByEvent(event){
-        console.log(event)
+        
         
         let outputs = event.returnValues
  
