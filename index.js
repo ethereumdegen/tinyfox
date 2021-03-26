@@ -106,16 +106,18 @@ module.exports =  class TinyFox {
 
     async indexData(){    
 
-        let tinyfoxState = await this.mongoInterface.findOne('tinyfox_state', {})
+         
 
-        let currentEventFilterBlock = parseInt(tinyfoxState.currentEventFilterBlock)
+        let currentEventFilterBlock = parseInt(this.tinyfoxState.currentEventFilterBlock)
+
+        console.log('index data starting at ', currentEventFilterBlock)
 
         if(currentEventFilterBlock + this.indexingConfig.courseBlockGap < this.maxBlockNumber){
 
             if(this.indexingConfig.contractType.toLowerCase() == 'ERC721'){
-                await this.indexERC721Data( this.indexingConfig.courseBlockGap )
+                await this.indexERC721Data(currentEventFilterBlock, this.indexingConfig.courseBlockGap )
             }else{
-                await this.indexERC20Data( this.indexingConfig.courseBlockGap )
+                await this.indexERC20Data(currentEventFilterBlock, this.indexingConfig.courseBlockGap )
             }
     
     
@@ -126,9 +128,9 @@ module.exports =  class TinyFox {
         }else if( currentEventFilterBlock + this.indexingConfig.fineBlockGap < this.maxBlockNumber ){
          
             if(this.indexingConfig.contractType.toLowerCase() == 'ERC721'){
-                await this.indexERC721Data( this.indexingConfig.fineBlockGap )
+                await this.indexERC721Data(currentEventFilterBlock, this.indexingConfig.fineBlockGap )
             }else{
-                await this.indexERC20Data( this.indexingConfig.fineBlockGap )
+                await this.indexERC20Data(currentEventFilterBlock, this.indexingConfig.fineBlockGap )
             } 
 
 
@@ -141,21 +143,16 @@ module.exports =  class TinyFox {
     }
 
 
-    async indexERC20Data( blockGap ){
+    async indexERC20Data(startBlock, blockGap ){
 
         let contractAddress = this.indexingConfig.contractAddress
 
         let contract = Web3Helper.getCustomContract(ERC20ABI,contractAddress, this.web3  )
         
-        //let transferEvent = contract.events.Transfer 
+        
 
-        let tinyfoxState = await this.mongoInterface.findOne('tinyfox_state', {})
-
-        let currentEventFilterBlock = parseInt(tinyfoxState.currentEventFilterBlock)
-
-
-        let startBlock = currentEventFilterBlock
-        let endBlock = currentEventFilterBlock + blockGap
+         
+        let endBlock = startBlock + blockGap
 
         let results = await this.getContractEvents( contract, 'Transfer', startBlock, endBlock )
 
@@ -167,21 +164,16 @@ module.exports =  class TinyFox {
 
     }
 
-    async indexERC721Data( blockGap ){
+    async indexERC721Data(startBlock, blockGap ){
 
         let contractAddress = this.indexingConfig.contractAddress
 
         let contract = Web3Helper.getCustomContract(ERC721ABI,contractAddress, this.web3  )
         
-        //let transferEvent = contract.events.OwnershipTransferred 
+           
 
-        let tinyfoxState = await this.mongoInterface.findOne('tinyfox_state', {})
-
-        let currentEventFilterBlock = parseInt(tinyfoxState.currentEventFilterBlock)
-
-
-        let startBlock = currentEventFilterBlock
-        let endBlock = currentEventFilterBlock + blockGap
+         
+        let endBlock = startBlock + blockGap
 
         let results = await this.getContractEvents( contract, 'OwnershipTransferred' , startBlock, endBlock )
 
