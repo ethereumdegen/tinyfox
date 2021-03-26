@@ -28,13 +28,18 @@ let ERC20ABI = require( './config/contracts/ERC20ABI.json' )
 
 module.exports =  class TinyFox {
 
-    constructor(mongoOptions)
+    constructor(  )
     {
+       
+    }
+
+    async init( mongoOptions ){
         if(!mongoOptions.suffix){
             mongoOptions.suffix = 'development'
         }
 
-        this.mongoInterface = new MongoInterface( 'tinyfox_'.concat(mongoOptions.suffix) , mongoOptions) 
+        this.mongoInterface = new MongoInterface( ) 
+        await this.mongoInterface.init( 'tinyfox_'.concat(mongoOptions.suffix) , mongoOptions )
         
     }
 
@@ -68,7 +73,7 @@ module.exports =  class TinyFox {
 
         //this.currentEventFilterBlock = indexingConfig.startBlock;
 
-        this.maxBlockNumber = await Web3Helper.getBlockNumber(web3)
+        this.maxBlockNumber = await Web3Helper.getBlockNumber(this.web3)
 
         
         let existingState = await this.mongoInterface.findOne('tinyfox_state', {})
@@ -96,7 +101,7 @@ module.exports =  class TinyFox {
     }
 
     async updateBlockNumber(){
-        this.maxBlockNumber = await Web3Helper.getBlockNumber(web3)
+        this.maxBlockNumber = await Web3Helper.getBlockNumber(this.web3)
     }
 
     async indexData(){    
@@ -152,11 +157,13 @@ module.exports =  class TinyFox {
         let startBlock = currentEventFilterBlock
         let endBlock = currentEventFilterBlock + blockGap
 
-        let events = await this.getContractEvents( contract, 'Transfer', startBlock, endBlock )
+        let results = await this.getContractEvents( contract, 'Transfer', startBlock, endBlock )
 
-        console.log('events', events)
+         
 
-        //save in mongo 
+        //save in mongo  
+        await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
+    
 
     }
 
@@ -176,11 +183,13 @@ module.exports =  class TinyFox {
         let startBlock = currentEventFilterBlock
         let endBlock = currentEventFilterBlock + blockGap
 
-        let events = await this.getContractEvents( contract, 'OwnershipTransferred' , startBlock, endBlock )
-
-        console.log('events', events)
+        let results = await this.getContractEvents( contract, 'OwnershipTransferred' , startBlock, endBlock )
 
         //save in mongo 
+        await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
+    
+
+        
 
     }
 
