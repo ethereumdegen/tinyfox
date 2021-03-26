@@ -167,7 +167,10 @@ module.exports =  class TinyFox {
         //save in mongo  
         await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
     
+        for(let event of results.events){
+            await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash  },  event   )
 
+        }
     }
 
     async indexERC721Data(startBlock, blockGap ){
@@ -181,7 +184,7 @@ module.exports =  class TinyFox {
          
         let endBlock = startBlock + blockGap - 1
 
-        let results = await this.getContractEvents( contract, 'OwnershipTransferred' , startBlock, endBlock )
+        let results = await this.getContractEvents( contract, 'Transfer' , startBlock, endBlock )
 
 
         if(this.indexingConfig.logging){
@@ -190,6 +193,11 @@ module.exports =  class TinyFox {
 
         //save in mongo 
         await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
+
+        for(let event of results.events){
+            await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash  },  event  )
+
+        }
     
 
         
