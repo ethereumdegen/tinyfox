@@ -24,10 +24,20 @@ let envmode = process.env.NODE_ENV
 
 */
 let ERC721ABI = require( './config/contracts/ERC721ABI.json' )
-let ERC20ABI = require( './config/contracts/ERC20ABI.json' )
+let ERC20ABI = require( './config/contracts/SuperERC20ABI.json' )
 //let ERC721ABI = FileHelper.readJSONFile('config/contracts/ERC721ABI.json')
 //let ERC20ABI = FileHelper.readJSONFile('config/contracts/ERC20ABI.json')
 
+/*
+const eventTopics = {
+    '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef': 'transfer',
+    '0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c': 'deposit',
+    '0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65': 'withdrawl',
+    '0xcf6fbb9dcea7d07263ab4f5c3a92f53af33dffc421d9d121e1c74b307e68189d': 'mint',
+    '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925': 'approval'
+}   
+*/
+//0xcf6fbb9dcea7d07263ab4f5c3a92f53af33dffc421d9d121e1c74b307e68189d
 
 module.exports =  class TinyFox {
 
@@ -72,9 +82,9 @@ module.exports =  class TinyFox {
             indexingConfig.fineBlockGap = 50;
         }
 
-        if(!this.indexingConfig.eventNames){
+        /*if(!this.indexingConfig.eventNames){
             this.indexingConfig.eventNames = ['Transfer']  //'Approval'
-        }
+        }*/
  
 
 
@@ -170,7 +180,7 @@ module.exports =  class TinyFox {
 
         let contractAddress = this.indexingConfig.contractAddress
 
-        let eventNames = this.indexingConfig.eventNames
+        //let eventNames = this.indexingConfig.eventNames
 
         let contract = Web3Helper.getCustomContract(ERC20ABI,contractAddress, this.web3  )
         
@@ -179,10 +189,10 @@ module.exports =  class TinyFox {
         let endBlock = startBlock + blockGap - 1
 
 
-        for(let eventName of eventNames){
+      
 
 
-            let results = await this.getContractEvents( contract, eventName /*'Transfer'*/, startBlock, endBlock )
+            let results = await this.getContractEvents( contract, "allEvents", startBlock, endBlock )
 
             if(this.indexingConfig.logging){
                 console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
@@ -193,11 +203,11 @@ module.exports =  class TinyFox {
         
             for(let event of results.events){
                 await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash , logIndex: event.logIndex  },  event   )
-                await this.modifyERC20LedgerByEvent(eventName,  event )
+                await this.modifyERC20LedgerByEvent(   event )
             }   
 
-
-        }
+ 
+        
 
        
     }
@@ -245,19 +255,34 @@ module.exports =  class TinyFox {
 
     }
 
+ 
+   
+    async modifyERC20LedgerByEvent(  event){
+       // console.log('event', event)
 
+        //let topicZero = event.raw.topics[0]
 
+        //let eventName = this.getEventNameFromTopicZero(topicZero)
 
-    async modifyERC20LedgerByEvent(eventName, event){
+         let eventName = event.event 
 
         let outputs = event.returnValues
  
         let contractAddress = event.address.toLowerCase()
-        let from = outputs['0'].toLowerCase()
-        let to = outputs['1'].toLowerCase()
-        let amount = parseInt(outputs['2']) 
+        if(!eventName){
 
+            console.log('WARN: unknown event', event )
+            return
+        }
+        
         if(eventName.toLowerCase() == 'transfer'){
+
+            let from = outputs['0'].toLowerCase()
+            let to = outputs['1'].toLowerCase()
+            let amount = parseInt(outputs['2']) 
+
+
+
             await this.modifyERC20LedgerBalance(   from ,contractAddress , amount * -1  )
             await this.modifyERC20LedgerBalance(   to ,contractAddress , amount ) 
 
@@ -266,7 +291,37 @@ module.exports =  class TinyFox {
 
         }
         if(eventName.toLowerCase() == 'approval'){
+
+            let from = outputs['0'].toLowerCase()
+            let to = outputs['1'].toLowerCase()
+            let amount = parseInt(outputs['2']) 
+
             await this.setERC20LedgerApproval(   contractAddress , from, to,  amount   ) 
+
+        }
+        if(eventName.toLowerCase() == 'mint'){
+
+            let to = outputs['0'].toLowerCase() 
+            let amount = parseInt(outputs['1']) 
+
+            await this.modifyERC20LedgerBalance(   to ,contractAddress , amount )  
+
+        }
+        if(eventName.toLowerCase() == 'deposit'){
+
+            let to = outputs['0'].toLowerCase() 
+            let amount = parseInt(outputs['1']) 
+
+            await this.modifyERC20LedgerBalance(   to ,contractAddress , amount )  
+
+        }
+
+        if(eventName.toLowerCase() == 'withdrawal'){
+
+            let from = outputs['0'].toLowerCase() 
+            let amount = parseInt(outputs['1']) 
+
+            await this.modifyERC20LedgerBalance(   from ,contractAddress , amount * -1 )  
 
         }
 
@@ -361,6 +416,7 @@ module.exports =  class TinyFox {
         }
     }
 
+ 
 
 }
  
