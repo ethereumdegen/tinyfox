@@ -1,5 +1,5 @@
 # 🦊 tinyfox 
-Simple lightweight data aggregator for Transfer events of ERC20 and ERC721 tokens 
+Simple lightweight data aggregator for Transfer/Approval events of ERC20 and ERC721 tokens 
 
 
 
@@ -31,9 +31,13 @@ Simple lightweight data aggregator for Transfer events of ERC20 and ERC721 token
         
         
         
- As tinyfox indexes, it starts at 'startBlock' and is collecting all Transfer events at a pace of 'courseBlockGap' blocks read per 'indexRate' of time.  
+ As tinyfox indexes, it starts at 'startBlock' and is collecting events at a pace of 'courseBlockGap' blocks read per 'indexRate' of time.  
  It stores these events inside of a mongo database named 'tinyfox_{{suffix}}' and inside of a collection named 'event_data'
  
  Once tinyfox synchronizes to the front of the blockchain data (current state) then it will use the 'fineBlockGap' to remain synchronized.  
  
  As tinyfox is scraping chaindata for the ERC20/ERC721 token, it is also building a cache of user balances in the tables named 'erc20_balances' and 'erc721_balances'. 
+ 
+ #### Events Supported
+ ERC20 Events:  Transfer, Approval, Deposit (weth), Withdrawal (weth), Mint (0xBTC)
+ ERC721 Events: Transfer
