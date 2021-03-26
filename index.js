@@ -118,7 +118,7 @@ module.exports =  class TinyFox {
 
         if(currentEventFilterBlock + this.indexingConfig.courseBlockGap < this.maxBlockNumber){
 
-            if(this.indexingConfig.contractType.toLowerCase() == 'ERC721'){
+            if(this.indexingConfig.contractType.toLowerCase() == 'erc721'){
                 await this.indexERC721Data(currentEventFilterBlock, this.indexingConfig.courseBlockGap )
             }else{
                 await this.indexERC20Data(currentEventFilterBlock, this.indexingConfig.courseBlockGap )
@@ -131,7 +131,7 @@ module.exports =  class TinyFox {
 
         }else if( currentEventFilterBlock + this.indexingConfig.fineBlockGap < this.maxBlockNumber ){
          
-            if(this.indexingConfig.contractType.toLowerCase() == 'ERC721'){
+            if(this.indexingConfig.contractType.toLowerCase() == 'erc721'){
                 await this.indexERC721Data(currentEventFilterBlock, this.indexingConfig.fineBlockGap )
             }else{
                 await this.indexERC20Data(currentEventFilterBlock, this.indexingConfig.fineBlockGap )
@@ -196,7 +196,7 @@ module.exports =  class TinyFox {
 
         for(let event of results.events){
             await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash  },  event  )
-            await this.modifyERC271LedgerByEvent( event )
+            await this.modifyERC721LedgerByEvent( event )
         }
      
 
@@ -245,9 +245,50 @@ module.exports =  class TinyFox {
     }
 
 
-    async modifyERC271LedgerByEvent(event){
+    async modifyERC721LedgerByEvent(event){
+        console.log(event)
+        
+        let outputs = event.returnValues
+ 
+        let contractAddress = event.address.toLowerCase()
+        let from = outputs.from.toLowerCase()
+        let to = outputs.to.toLowerCase()
+        let tokenId =  outputs.tokenId 
 
+        await this.removeERC721TokenFromAccount( from ,contractAddress , tokenId  )
+        await this.addERC721TokenToAccount( to ,contractAddress , tokenId ) 
 
+    }
+
+    async removeERC721TokenFromAccount( accountAddress ,contractAddress , tokenId ){
+        let existingAccount = await this.mongoInterface.findOne('erc721_balances', {accountAddress: accountAddress, contractAddress: contractAddress }  )
+
+        if(existingAccount){
+            let tokenIdsArray = existingAccount.tokenIds
+
+            let index = tokenIdsArray.indexOf( tokenId );
+            if (index > -1) {
+                tokenIdsArray.splice(index, 1);
+            }
+
+            await this.mongoInterface.updateOne('erc721_balances', {accountAddress: accountAddress, contractAddress: contractAddress}, {tokenIds: tokenIdsArray} )
+        }else{
+            await this.mongoInterface.insertOne('erc721_balances', {accountAddress: accountAddress, contractAddress: contractAddress, tokenIds: [] }   )
+        }
+    }
+
+    async addERC721TokenToAccount( accountAddress ,contractAddress , tokenId ){
+        let existingAccount = await this.mongoInterface.findOne('erc721_balances', {accountAddress: accountAddress, contractAddress: contractAddress }  )
+
+        if(existingAccount){
+            let tokenIdsArray = existingAccount.tokenIds
+
+            tokenIdsArray.push(tokenId)
+
+            await this.mongoInterface.updateOne('erc721_balances', {accountAddress: accountAddress, contractAddress: contractAddress}, {tokenIds: tokenIdsArray} )
+        }else{
+            await this.mongoInterface.insertOne('erc721_balances', {accountAddress: accountAddress, contractAddress: contractAddress, tokenIds: [tokenId] }   )
+        }
     }
 
 
