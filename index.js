@@ -74,8 +74,13 @@ module.exports =  class TinyFox {
 
         //this.currentEventFilterBlock = indexingConfig.startBlock;
 
-        this.maxBlockNumber = await Web3Helper.getBlockNumber(this.web3)
+        //this.maxBlockNumber = await Web3Helper.getBlockNumber(this.web3)
+        await this.updateBlockNumber()
 
+        if(this.maxBlockNumber == null){
+            console.error('TinyFox cannot fetch the blocknumber: Stopping Process')
+            return 
+        }
         
         let existingState = await this.mongoInterface.findOne('tinyfox_state', {})
         if(!existingState){ 
@@ -101,8 +106,16 @@ module.exports =  class TinyFox {
         let deleted = await this.mongoInterface.dropDatabase( )
     }
 
+
     async updateBlockNumber(){
-        this.maxBlockNumber = await Web3Helper.getBlockNumber(this.web3)
+
+        try{ 
+            this.maxBlockNumber = await Web3Helper.getBlockNumber(this.web3)
+        }catch(e){
+
+            console.error(e)
+        }
+
     }
 
     async indexData(){    
@@ -209,7 +222,7 @@ module.exports =  class TinyFox {
                 contract.getPastEvents(eventName, { fromBlock: startBlock, toBlock: endBlock }) 
                 .then(function(events){
                     resolve({contractAddress: contract.options.address , startBlock: startBlock, endBlock: endBlock, events:events}) // same results as the optional callback above
-                });
+                }).catch(function(error){reject(error)});
             })
          
  
