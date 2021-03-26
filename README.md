@@ -7,7 +7,9 @@ Simple lightweight data aggregator for Transfer events of ERC20 and ERC721 token
 (Requires a MongoDB to be installed on the local machine) 
 
 
-       this.tinyFox = new TinyFox({suffix: 'development'})
+        this.tinyFox = new TinyFox()
+        await this.tinyFox.init({suffix: 'development'})
+
 
 
         let tinyfoxConfig = {
@@ -23,5 +25,11 @@ Simple lightweight data aggregator for Transfer events of ERC20 and ERC721 token
 
         this.tinyFox.startIndexing( this.web3, tinyfoxConfig )  
         
-        this.tinyFox.stopIndexing(    )  
+        this.tinyFox.stopIndexing()   
+        
+        this.tinyFox.resetState()  
+        
+        
+        
+        
         
