@@ -106,9 +106,9 @@ module.exports =  class TinyFox {
 
     async indexData(){    
 
-         
+        let tinyfoxState = await this.mongoInterface.findOne('tinyfox_state', {})
 
-        let currentEventFilterBlock = parseInt(this.tinyfoxState.currentEventFilterBlock)
+        let currentEventFilterBlock = parseInt(tinyfoxState.currentEventFilterBlock)
 
         console.log('index data starting at ', currentEventFilterBlock)
 
