@@ -14,7 +14,8 @@ let envmode = process.env.NODE_ENV
         courseBlockGap: 1000, 
         fineBlockGap: 50,
         indexRate: 10000,
-        updateBlockNumberRate:60000
+        updateBlockNumberRate:60000,
+        logging: false
 
 
     }
@@ -110,7 +111,10 @@ module.exports =  class TinyFox {
 
         let currentEventFilterBlock = parseInt(tinyfoxState.currentEventFilterBlock)
 
-        console.log('index data starting at ', currentEventFilterBlock)
+        if(this.indexingConfig.logging){
+            console.log('index data starting at ', currentEventFilterBlock)
+        }
+        
 
         if(currentEventFilterBlock + this.indexingConfig.courseBlockGap < this.maxBlockNumber){
 
@@ -152,11 +156,13 @@ module.exports =  class TinyFox {
         
 
          
-        let endBlock = startBlock + blockGap
+        let endBlock = startBlock + blockGap - 1
 
         let results = await this.getContractEvents( contract, 'Transfer', startBlock, endBlock )
 
-         
+        if(this.indexingConfig.logging){
+            console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
+        }
 
         //save in mongo  
         await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
@@ -173,9 +179,14 @@ module.exports =  class TinyFox {
            
 
          
-        let endBlock = startBlock + blockGap
+        let endBlock = startBlock + blockGap - 1
 
         let results = await this.getContractEvents( contract, 'OwnershipTransferred' , startBlock, endBlock )
+
+
+        if(this.indexingConfig.logging){
+            console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
+        }
 
         //save in mongo 
         await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
