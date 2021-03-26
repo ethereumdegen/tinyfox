@@ -77,14 +77,10 @@ module.exports =  class TinyFox {
 
         
         let existingState = await this.mongoInterface.findOne('tinyfox_state', {})
-        if(existingState){
-            this.tinyfoxState = existingState
-        }else{
-            this.tinyfoxState = {  currentEventFilterBlock: indexingConfig.startBlock   }
-            await this.mongoInterface.insertOne('tinyfox_state', this.tinyfoxState)
-        }
-
- 
+        if(!existingState){ 
+            let tinyfoxState = {  currentEventFilterBlock: indexingConfig.startBlock   }
+            await this.mongoInterface.insertOne('tinyfox_state', tinyfoxState)
+        } 
 
         this.indexUpdater = setInterval(this.indexData.bind(this), indexingConfig.indexRate)
 
@@ -98,6 +94,10 @@ module.exports =  class TinyFox {
 
     async resetState(){
         let deleted = await this.mongoInterface.deleteOne('tinyfox_state', {})
+    }
+
+    async dropDatabase(){
+        let deleted = await this.mongoInterface.dropDatabase( )
     }
 
     async updateBlockNumber(){
