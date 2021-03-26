@@ -39,5 +39,7 @@ Simple lightweight data aggregator for Transfer/Approval events of ERC20 and ERC
  As tinyfox is scraping chaindata for the ERC20/ERC721 token, it is also building a cache of user balances in the tables named 'erc20_balances' and 'erc721_balances'. 
  
  #### Events Supported
+ 
  ERC20 Events:  Transfer, Approval, Deposit (weth), Withdrawal (weth), Mint (0xBTC)
+ 
  ERC721 Events: Transfer
