@@ -31,7 +31,7 @@ Simple lightweight data aggregator for Transfer events of ERC20 and ERC721 token
         
         
         
- As tinyfox indexes, it starts at 'startBlock' and is collecting all Transfer events at a pact of 'courseBlockGap' blocks read per 'indexRate' of time.  
- It stores these events inside of a mongodatabase named 'tinyfox_{{suffix}}' and inside of a collection named 'event_data'
+ As tinyfox indexes, it starts at 'startBlock' and is collecting all Transfer events at a pace of 'courseBlockGap' blocks read per 'indexRate' of time.  
+ It stores these events inside of a mongo database named 'tinyfox_{{suffix}}' and inside of a collection named 'event_data'
  
  Once tinyfox synchronizes to the front of the blockchain data (current state) then it will use the 'fineBlockGap' to remain synchronized.  
