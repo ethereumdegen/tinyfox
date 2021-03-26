@@ -40,6 +40,6 @@ Simple lightweight data aggregator for Transfer/Approval events of ERC20 and ERC
  
  #### Events Supported
  
- ERC20 Events:  Transfer, Approval, Deposit (weth), Withdrawal (weth), Mint (0xBTC)
+        ERC20 Events:  Transfer, Approval, Deposit (weth), Withdrawal (weth), Mint (0xBTC)
  
- ERC721 Events: Transfer
+        ERC721 Events: Transfer
