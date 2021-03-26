@@ -15,7 +15,9 @@ let envmode = process.env.NODE_ENV
         fineBlockGap: 50,
         indexRate: 10000,
         updateBlockNumberRate:60000,
-        logging: false
+        logging: false,
+
+        eventNames: ["Transfer"] //or "Approval"
 
 
     }
@@ -68,6 +70,10 @@ module.exports =  class TinyFox {
 
         if(!indexingConfig.fineBlockGap){
             indexingConfig.fineBlockGap = 50;
+        }
+
+        if(!this.indexingConfig.eventNames){
+            this.indexingConfig.eventNames = ['Transfer']  //'Approval'
         }
  
 
@@ -164,26 +170,36 @@ module.exports =  class TinyFox {
 
         let contractAddress = this.indexingConfig.contractAddress
 
+        let eventNames = this.indexingConfig.eventNames
+
         let contract = Web3Helper.getCustomContract(ERC20ABI,contractAddress, this.web3  )
         
-        
-
+         
          
         let endBlock = startBlock + blockGap - 1
 
-        let results = await this.getContractEvents( contract, 'Transfer', startBlock, endBlock )
 
-        if(this.indexingConfig.logging){
-            console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
+        for(let eventName of eventNames){
+
+
+            let results = await this.getContractEvents( contract, eventName /*'Transfer'*/, startBlock, endBlock )
+
+            if(this.indexingConfig.logging){
+                console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
+            }
+    
+            //save in mongo  
+            await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
+        
+            for(let event of results.events){
+                await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash , logIndex: event.logIndex  },  event   )
+                await this.modifyERC20LedgerByEvent(eventName,  event )
+            }   
+
+
         }
 
-        //save in mongo  
-        await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
-    
-        for(let event of results.events){
-            await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash  },  event   )
-            await this.modifyERC20LedgerByEvent( event )
-        }   
+       
     }
 
     async indexERC721Data(startBlock, blockGap ){
@@ -208,7 +224,7 @@ module.exports =  class TinyFox {
         await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
 
         for(let event of results.events){
-            await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash  },  event  )
+            await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  },  event  )
             await this.modifyERC721LedgerByEvent( event )
         }
      
@@ -232,30 +248,71 @@ module.exports =  class TinyFox {
 
 
 
-    async modifyERC20LedgerByEvent(event){
+    async modifyERC20LedgerByEvent(eventName, event){
 
         let outputs = event.returnValues
  
         let contractAddress = event.address.toLowerCase()
-        let from = outputs.from.toLowerCase()
-        let to = outputs.to.toLowerCase()
-        let amount = parseInt(outputs.value) 
- 
+        let from = outputs['0'].toLowerCase()
+        let to = outputs['1'].toLowerCase()
+        let amount = parseInt(outputs['2']) 
 
-        await this.modifyERC20LedgerBalance( from ,contractAddress , amount * -1  )
-        await this.modifyERC20LedgerBalance( to ,contractAddress , amount ) 
+        if(eventName.toLowerCase() == 'transfer'){
+            await this.modifyERC20LedgerBalance(   from ,contractAddress , amount * -1  )
+            await this.modifyERC20LedgerBalance(   to ,contractAddress , amount ) 
 
+             
+            await this.modifyERC20LedgerApproval(  contractAddress, from ,to  , amount * -1 ) 
+
+        }
+        if(eventName.toLowerCase() == 'approval'){
+            await this.setERC20LedgerApproval(   contractAddress , from, to,  amount   ) 
+
+        }
+
+       
     }
 
-    async modifyERC20LedgerBalance( accountAddress, contractAddress, amountDelta){
-        let existingFrom = await this.mongoInterface.findOne('erc20_balances', {accountAddress: accountAddress, contractAddress: contractAddress }  )
+    async modifyERC20LedgerBalance(accountAddress, contractAddress, amountDelta){
+
+        let collectionName = 'erc20_balances' 
+
+        let existingFrom = await this.mongoInterface.findOne(collectionName, {accountAddress: accountAddress, contractAddress: contractAddress }  )
 
         if(existingFrom){
-            await this.mongoInterface.updateCustomAndFindOne('erc20_balances', {accountAddress: accountAddress, contractAddress: contractAddress } , {  $inc: { amount: amountDelta } } )
+            await this.mongoInterface.updateCustomAndFindOne(collectionName, {accountAddress: accountAddress, contractAddress: contractAddress } , {  $inc: { amount: amountDelta } } )
         }else{
-            await this.mongoInterface.insertOne('erc20_balances', {accountAddress: accountAddress, contractAddress: contractAddress, amount: amountDelta }   )
+            await this.mongoInterface.insertOne(collectionName, {accountAddress: accountAddress, contractAddress: contractAddress, amount: amountDelta }   )
         }
     }
+
+    async modifyERC20LedgerApproval( contractAddress, ownerAddress, spenderAddress,   amountDelta){
+
+        let collectionName = 'erc20_approval' 
+
+        let existingFrom = await this.mongoInterface.findOne(collectionName, {ownerAddress: ownerAddress, spenderAddress: spenderAddress, contractAddress: contractAddress }  )
+
+        if(existingFrom){
+            await this.mongoInterface.updateCustomAndFindOne(collectionName, {ownerAddress: ownerAddress, spenderAddress: spenderAddress, contractAddress: contractAddress } , {  $inc: { amount: amountDelta } } )
+        }else{
+            await this.mongoInterface.insertOne(collectionName, {ownerAddress: ownerAddress, spenderAddress: spenderAddress, contractAddress: contractAddress, amount: amountDelta }   )
+        }
+    }
+
+    async setERC20LedgerApproval( contractAddress, ownerAddress, spenderAddress,   newAmount ){
+
+        let collectionName = 'erc20_approval' 
+
+        let existingFrom = await this.mongoInterface.findOne(collectionName, {ownerAddress: ownerAddress, spenderAddress: spenderAddress, contractAddress: contractAddress }  )
+
+        if(existingFrom){
+            await this.mongoInterface.updateCustomAndFindOne(collectionName, {ownerAddress: ownerAddress, spenderAddress: spenderAddress, contractAddress: contractAddress } , {  $set: { amount: newAmount } } )
+        }else{
+            await this.mongoInterface.insertOne(collectionName, {ownerAddress: ownerAddress, spenderAddress: spenderAddress, contractAddress: contractAddress, amount: newAmount }   )
+        }
+    }
+
+
 
 
     async modifyERC721LedgerByEvent(event){
