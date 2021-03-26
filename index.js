@@ -66,9 +66,18 @@ module.exports =  class TinyFox {
  
 
 
-        this.currentEventFilterBlock = indexingConfig.startBlock;
+        //this.currentEventFilterBlock = indexingConfig.startBlock;
 
         this.maxBlockNumber = await Web3Helper.getBlockNumber(web3)
+
+        
+        let existingState = await this.mongoInterface.findOne('tinyfox_state', {})
+        if(existingState){
+            this.tinyfoxState = existingState
+        }else{
+            this.tinyfoxState = {  currentEventFilterBlock: indexingConfig.startBlock   }
+            await this.mongoInterface.insertOne('tinyfox_state', this.tinyfoxState)
+        }
 
  
 
@@ -82,13 +91,21 @@ module.exports =  class TinyFox {
         clearInterval(this.blockNumberUpdater)
     }
 
+    async resetState(){
+        let deleted = await this.mongoInterface.deleteOne('tinyfox_state', {})
+    }
+
     async updateBlockNumber(){
         this.maxBlockNumber = await Web3Helper.getBlockNumber(web3)
     }
 
     async indexData(){    
 
-        if(this.currentEventFilterBlock + this.indexingConfig.courseBlockGap < this.maxBlockNumber){
+        let tinyfoxState = await this.mongoInterface.findOne('tinyfox_state', {})
+
+        let currentEventFilterBlock = parseInt(tinyfoxState.currentEventFilterBlock)
+
+        if(currentEventFilterBlock + this.indexingConfig.courseBlockGap < this.maxBlockNumber){
 
             if(this.indexingConfig.contractType.toLowerCase() == 'ERC721'){
                 await this.indexERC721Data( this.indexingConfig.courseBlockGap )
@@ -97,17 +114,22 @@ module.exports =  class TinyFox {
             }
     
     
-            this.currentEventFilterBlock = this.currentEventFilterBlock + this.indexingConfig.courseBlockGap
-     
-        }else if( this.currentEventFilterBlock + this.indexingConfig.fineBlockGap < this.maxBlockNumber ){
+             
+            await this.mongoInterface.updateCustomAndFindOne('tinyfox_state', {}, { $inc: { currentEventFilterBlock: parseInt(this.indexingConfig.courseBlockGap)    }   } )
+    
+
+        }else if( currentEventFilterBlock + this.indexingConfig.fineBlockGap < this.maxBlockNumber ){
          
             if(this.indexingConfig.contractType.toLowerCase() == 'ERC721'){
                 await this.indexERC721Data( this.indexingConfig.fineBlockGap )
             }else{
                 await this.indexERC20Data( this.indexingConfig.fineBlockGap )
             } 
+
+
+            await this.mongoInterface.updateCustomAndFindOne('tinyfox_state', {}, { $inc: { currentEventFilterBlock: parseInt(this.indexingConfig.fineBlockGap)    }   } )
     
-            this.currentEventFilterBlock = this.currentEventFilterBlock + this.indexingConfig.fineBlockGap
+            
      
         }
 
@@ -122,8 +144,13 @@ module.exports =  class TinyFox {
         
         //let transferEvent = contract.events.Transfer 
 
-        let startBlock = this.currentEventFilterBlock
-        let endBlock = this.currentEventFilterBlock + blockGap
+        let tinyfoxState = await this.mongoInterface.findOne('tinyfox_state', {})
+
+        let currentEventFilterBlock = parseInt(tinyfoxState.currentEventFilterBlock)
+
+
+        let startBlock = currentEventFilterBlock
+        let endBlock = currentEventFilterBlock + blockGap
 
         let events = await this.getContractEvents( contract, 'Transfer', startBlock, endBlock )
 
@@ -141,8 +168,13 @@ module.exports =  class TinyFox {
         
         //let transferEvent = contract.events.OwnershipTransferred 
 
-        let startBlock = this.currentEventFilterBlock
-        let endBlock = this.currentEventFilterBlock + blockGap
+        let tinyfoxState = await this.mongoInterface.findOne('tinyfox_state', {})
+
+        let currentEventFilterBlock = parseInt(tinyfoxState.currentEventFilterBlock)
+
+
+        let startBlock = currentEventFilterBlock
+        let endBlock = currentEventFilterBlock + blockGap
 
         let events = await this.getContractEvents( contract, 'OwnershipTransferred' , startBlock, endBlock )
 
