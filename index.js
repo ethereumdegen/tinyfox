@@ -169,8 +169,8 @@ module.exports =  class TinyFox {
     
         for(let event of results.events){
             await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash  },  event   )
-
-        }
+            await this.modifyERC20LedgerByEvent( event )
+        }   
     }
 
     async indexERC721Data(startBlock, blockGap ){
@@ -196,11 +196,9 @@ module.exports =  class TinyFox {
 
         for(let event of results.events){
             await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash  },  event  )
-
+            await this.modifyERC271LedgerByEvent( event )
         }
-    
-
-        
+     
 
     }
 
@@ -215,6 +213,40 @@ module.exports =  class TinyFox {
             })
          
  
+
+    }
+
+
+
+
+    async modifyERC20LedgerByEvent(event){
+
+        let outputs = event.returnValues
+ 
+        let contractAddress = event.address.toLowerCase()
+        let from = outputs.from.toLowerCase()
+        let to = outputs.to.toLowerCase()
+        let amount = parseInt(outputs.value) 
+ 
+
+        await this.modifyERC20LedgerBalance( from ,contractAddress , amount * -1  )
+        await this.modifyERC20LedgerBalance( to ,contractAddress , amount ) 
+
+    }
+
+    async modifyERC20LedgerBalance( accountAddress, contractAddress, amountDelta){
+        let existingFrom = await this.mongoInterface.findOne('erc20_balances', {accountAddress: accountAddress, contractAddress: contractAddress }  )
+
+        if(existingFrom){
+            await this.mongoInterface.updateCustomAndFindOne('erc20_balances', {accountAddress: accountAddress, contractAddress: contractAddress } , {  $inc: { amount: amountDelta } } )
+        }else{
+            await this.mongoInterface.insertOne('erc20_balances', {accountAddress: accountAddress, contractAddress: contractAddress, amount: amountDelta }   )
+        }
+    }
+
+
+    async modifyERC271LedgerByEvent(event){
+
 
     }
 
