@@ -35,3 +35,5 @@ Simple lightweight data aggregator for Transfer events of ERC20 and ERC721 token
  It stores these events inside of a mongo database named 'tinyfox_{{suffix}}' and inside of a collection named 'event_data'
  
  Once tinyfox synchronizes to the front of the blockchain data (current state) then it will use the 'fineBlockGap' to remain synchronized.  
+ 
+ As tinyfox is scraping chaindata for the ERC20/ERC721 token, it is also building a cache of user balances in the tables named 'erc20_balances' and 'erc721_balances'. 
