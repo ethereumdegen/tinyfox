@@ -25,19 +25,13 @@ let envmode = process.env.NODE_ENV
 */
 let ERC721ABI = require( './config/contracts/ERC721ABI.json' )
 let ERC20ABI = require( './config/contracts/SuperERC20ABI.json' )
-//let ERC721ABI = FileHelper.readJSONFile('config/contracts/ERC721ABI.json')
-//let ERC20ABI = FileHelper.readJSONFile('config/contracts/ERC20ABI.json')
 
-/*
-const eventTopics = {
-    '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef': 'transfer',
-    '0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c': 'deposit',
-    '0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65': 'withdrawl',
-    '0xcf6fbb9dcea7d07263ab4f5c3a92f53af33dffc421d9d121e1c74b307e68189d': 'mint',
-    '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925': 'approval'
-}   
-*/
-//0xcf6fbb9dcea7d07263ab4f5c3a92f53af33dffc421d9d121e1c74b307e68189d
+
+const SAFE_EVENT_COUNT = 700
+const LOW_EVENT_COUNT = 50
+
+var stepSizeScaleFactor = 1
+
 
 module.exports =  class TinyFox {
 
@@ -185,11 +179,8 @@ module.exports =  class TinyFox {
         let contract = Web3Helper.getCustomContract(ERC20ABI,contractAddress, this.web3  )
         
          
-         
-        let endBlock = startBlock + blockGap - 1
-
-
-      
+         let scaledBlockGap = parseInt( blockGap / stepSizeScaleFactor  )  
+         let endBlock = startBlock + Math.max(scaledBlockGap - 1 , 1)     
 
 
             let results = await this.getContractEvents( contract, "allEvents", startBlock, endBlock )
@@ -197,15 +188,33 @@ module.exports =  class TinyFox {
             if(this.indexingConfig.logging){
                 console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
             }
-    
-            //save in mongo  
-            await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
-        
-            for(let event of results.events){
-                await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash , logIndex: event.logIndex  },  event   )
-                await this.modifyERC20LedgerByEvent(   event )
-            }   
 
+            if(results.events.length > SAFE_EVENT_COUNT  ){
+                    stepSizeScaleFactor  = parseInt(stepSizeScaleFactor * 2)
+                    if(this.indexingConfig.logging){
+                        console.log('ScaleFactor ',stepSizeScaleFactor)
+                    }
+
+            }else{
+
+                //save in mongo  
+                await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
+            
+                for(let event of results.events){
+                    await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash , logIndex: event.logIndex  },  event   )
+                    await this.modifyERC20LedgerByEvent(   event )
+                }   
+
+                if(results.events.length < LOW_EVENT_COUNT){
+                    stepSizeScaleFactor  = Math.max(  parseInt(stepSizeScaleFactor / 2) , 1)
+                    if(this.indexingConfig.logging){
+                        console.log('ScaleFactor ',stepSizeScaleFactor)
+                    }
+                }
+                
+            }
+
+    
  
         
 
@@ -220,8 +229,9 @@ module.exports =  class TinyFox {
         
            
 
-         
-        let endBlock = startBlock + blockGap - 1
+        let scaledBlockGap = parseInt( blockGap / stepSizeScaleFactor  )  
+        let endBlock = startBlock + Math.max(scaledBlockGap - 1 , 1)     
+
 
         let results = await this.getContractEvents( contract, 'Transfer' , startBlock, endBlock )
 
@@ -230,16 +240,32 @@ module.exports =  class TinyFox {
             console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
         }
 
-        //save in mongo 
-        await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
 
-        for(let event of results.events){
-            await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  },  event  )
-            await this.modifyERC721LedgerByEvent( event )
+        if(results.events.length > SAFE_EVENT_COUNT  ){
+            stepSizeScaleFactor  = parseInt(stepSizeScaleFactor * 2)
+            if(this.indexingConfig.logging){
+                console.log('ScaleFactor ',stepSizeScaleFactor)
+            }
+
+        }else{
+
+            //save in mongo 
+            await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
+
+            for(let event of results.events){
+                await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  },  event  )
+                await this.modifyERC721LedgerByEvent( event )
+            }
+        
+
+            if(results.events.length < LOW_EVENT_COUNT){
+                stepSizeScaleFactor  = Math.max(  parseInt(stepSizeScaleFactor / 2) , 1)
+                if(this.indexingConfig.logging){
+                    console.log('ScaleFactor ',stepSizeScaleFactor)
+                }
+            }
+
         }
-     
-
-    }
 
     async getContractEvents(contract, eventName, startBlock, endBlock  ){
 

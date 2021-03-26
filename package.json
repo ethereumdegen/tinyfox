@@ -1,6 +1,6 @@
 {
   "name": "tinyfox",
-  "version": "0.13.0",
+  "version": "0.13.2",
   "description": "Data aggregation node for Ethereum",
   "main": "index.js", 
   "scripts": {
