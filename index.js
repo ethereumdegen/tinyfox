@@ -137,20 +137,20 @@ module.exports =  class TinyFox {
 
         let tinyfoxState = await this.mongoInterface.findOne('tinyfox_state', {})
 
-        let currentEventFilterBlock = parseInt(this.currentIndexingBlock) //tinyfoxState.currentEventFilterBlock
+        let cIndexingBlock = parseInt(this.currentIndexingBlock) //tinyfoxState.currentEventFilterBlock
 
         if(this.indexingConfig.logging){
-            console.log('index data starting at ', currentEventFilterBlock, this.indexingConfig.contractAddress)
+            console.log('index data starting at ', cIndexingBlock, this.indexingConfig.contractAddress)
         }
         
         let courseBlockGap = this.getScaledCourseBlockGap(  )
 
-        if(currentEventFilterBlock + courseBlockGap < this.maxBlockNumber){
+        if(cIndexingBlock + courseBlockGap < this.maxBlockNumber){
 
             if(this.indexingConfig.contractType.toLowerCase() == 'erc721'){
-                await this.indexERC721Data(currentEventFilterBlock, this.indexingConfig.courseBlockGap )
+                await this.indexERC721Data(cIndexingBlock, this.indexingConfig.courseBlockGap )
             }else{
-                await this.indexERC20Data(currentEventFilterBlock, this.indexingConfig.courseBlockGap )
+                await this.indexERC20Data(cIndexingBlock, this.indexingConfig.courseBlockGap )
             }
     
     
@@ -158,12 +158,12 @@ module.exports =  class TinyFox {
             await this.mongoInterface.updateCustomAndFindOne('tinyfox_state', {}, { $set:{currentEventFilterBlock: this.currentIndexingBlock, synced:false}   } )
     
 
-        }else if( currentEventFilterBlock + this.indexingConfig.fineBlockGap < this.maxBlockNumber ){
+        }else if( cIndexingBlock + this.indexingConfig.fineBlockGap < this.maxBlockNumber ){
          
             if(this.indexingConfig.contractType.toLowerCase() == 'erc721'){
-                await this.indexERC721Data(currentEventFilterBlock, this.indexingConfig.fineBlockGap )
+                await this.indexERC721Data(cIndexingBlock, this.indexingConfig.fineBlockGap )
             }else{
-                await this.indexERC20Data(currentEventFilterBlock, this.indexingConfig.fineBlockGap )
+                await this.indexERC20Data(cIndexingBlock, this.indexingConfig.fineBlockGap )
             } 
 
 
@@ -236,8 +236,8 @@ module.exports =  class TinyFox {
                     } 
                 }   
 
-                this.currentIndexingBlock = this.currentIndexingBlock + parseInt(blockGap)
-
+                this.currentIndexingBlock = startBlock + parseInt(blockGap)
+                console.log('this.currentIndexingBlock',this.currentIndexingBlock)
                 if(results.events.length < LOW_EVENT_COUNT){
                     this.stepSizeScaleFactor  = Math.max(  parseInt(this.stepSizeScaleFactor / 2) , 1)
                     if(this.indexingConfig.logging){
@@ -297,7 +297,7 @@ module.exports =  class TinyFox {
                
             }
 
-            this.currentIndexingBlock = this.currentIndexingBlock + parseInt(blockGap)
+            this.currentIndexingBlock = startBlock + parseInt(blockGap)
         
 
             if(results.events.length < LOW_EVENT_COUNT){
