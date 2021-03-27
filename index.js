@@ -32,6 +32,8 @@ const LOW_EVENT_COUNT = 50
 
 var stepSizeScaleFactor = 1
 
+var currentBlock
+
 
 module.exports =  class TinyFox {
 
@@ -76,11 +78,7 @@ module.exports =  class TinyFox {
             indexingConfig.fineBlockGap = 50;
         }
 
-        /*if(!this.indexingConfig.eventNames){
-            this.indexingConfig.eventNames = ['Transfer']  //'Approval'
-        }*/
- 
-
+    
 
         //this.currentEventFilterBlock = indexingConfig.startBlock;
 
@@ -94,8 +92,11 @@ module.exports =  class TinyFox {
         
         let existingState = await this.mongoInterface.findOne('tinyfox_state', {})
         if(!existingState){ 
-            let tinyfoxState = {  currentEventFilterBlock: indexingConfig.startBlock   }
-            await this.mongoInterface.insertOne('tinyfox_state', tinyfoxState)
+           currentBlock = indexingConfig.startBlock 
+           let tinyfoxState = {  currentEventFilterBlock: currentBlock  }
+           await this.mongoInterface.insertOne('tinyfox_state', tinyfoxState)
+        }else{
+            currentBlock = existingState.currentEventFilterBlock
         } 
 
         this.indexUpdater = setInterval(this.indexData.bind(this), indexingConfig.indexRate)
@@ -128,18 +129,23 @@ module.exports =  class TinyFox {
 
     }
 
+    getScaledCourseBlockGap(){
+        return parseInt( this.indexingConfig.courseBlockGap / stepSizeScaleFactor )
+    }
+
     async indexData(){    
 
         let tinyfoxState = await this.mongoInterface.findOne('tinyfox_state', {})
 
-        let currentEventFilterBlock = parseInt(tinyfoxState.currentEventFilterBlock)
+        let currentEventFilterBlock = parseInt(currentBlock) //tinyfoxState.currentEventFilterBlock
 
         if(this.indexingConfig.logging){
             console.log('index data starting at ', currentEventFilterBlock)
         }
         
+        let courseBlockGap = this.getScaledCourseBlockGap(  )
 
-        if(currentEventFilterBlock + this.indexingConfig.courseBlockGap < this.maxBlockNumber){
+        if(currentEventFilterBlock + courseBlockGap < this.maxBlockNumber){
 
             if(this.indexingConfig.contractType.toLowerCase() == 'erc721'){
                 await this.indexERC721Data(currentEventFilterBlock, this.indexingConfig.courseBlockGap )
@@ -149,7 +155,7 @@ module.exports =  class TinyFox {
     
     
              
-            await this.mongoInterface.updateCustomAndFindOne('tinyfox_state', {}, { $inc: { currentEventFilterBlock: parseInt(this.indexingConfig.courseBlockGap)    } , $set:{synced:false}   } )
+            await this.mongoInterface.updateCustomAndFindOne('tinyfox_state', {}, { $set:{currentEventFilterBlock: currentBlock, synced:false}   } )
     
 
         }else if( currentEventFilterBlock + this.indexingConfig.fineBlockGap < this.maxBlockNumber ){
@@ -161,7 +167,7 @@ module.exports =  class TinyFox {
             } 
 
 
-            await this.mongoInterface.updateCustomAndFindOne('tinyfox_state', {}, { $inc: { currentEventFilterBlock: parseInt(this.indexingConfig.fineBlockGap)    } , $set:{synced:true}  } )
+            await this.mongoInterface.updateCustomAndFindOne('tinyfox_state', {}, { $set:{currentEventFilterBlock: currentBlock, synced:true}   } )
     
             
      
@@ -179,8 +185,8 @@ module.exports =  class TinyFox {
         let contract = Web3Helper.getCustomContract(ERC20ABI,contractAddress, this.web3  )
         
          
-         let scaledBlockGap = parseInt( blockGap / stepSizeScaleFactor  )  
-         let endBlock = startBlock + Math.max(scaledBlockGap - 1 , 1)     
+          
+         let endBlock = startBlock + Math.max(blockGap - 1 , 1)     
 
         try{
             var results = await this.getContractEvents( contract, "allEvents", startBlock, endBlock )
@@ -223,6 +229,8 @@ module.exports =  class TinyFox {
                     await this.modifyERC20LedgerByEvent(   event )
                 }   
 
+                currentBlock = currentBlock + parseInt(blockGap)
+
                 if(results.events.length < LOW_EVENT_COUNT){
                     stepSizeScaleFactor  = Math.max(  parseInt(stepSizeScaleFactor / 2) , 1)
                     if(this.indexingConfig.logging){
@@ -246,9 +254,8 @@ module.exports =  class TinyFox {
         let contract = Web3Helper.getCustomContract(ERC721ABI,contractAddress, this.web3  )
         
            
-
-        let scaledBlockGap = parseInt( blockGap / stepSizeScaleFactor  )  
-        let endBlock = startBlock + Math.max(scaledBlockGap - 1 , 1)     
+  
+        let endBlock = startBlock + Math.max(blockGap - 1 , 1)     
 
         try{
             var results = await this.getContractEvents( contract, 'Transfer' , startBlock, endBlock )
@@ -277,6 +284,8 @@ module.exports =  class TinyFox {
                 await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  },  event  )
                 await this.modifyERC721LedgerByEvent( event )
             }
+
+            currentBlock = currentBlock + parseInt(blockGap)
         
 
             if(results.events.length < LOW_EVENT_COUNT){
