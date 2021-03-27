@@ -229,7 +229,7 @@ module.exports =  class TinyFox {
                     //await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash , logIndex: event.logIndex  },  event   )
                     //await this.modifyERC20LedgerByEvent(   event )
 
-                    let existingEvent = this.mongoInterface.findOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  })
+                    let existingEvent = await this.mongoInterface.findOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  })
                     if(!existingEvent){
                         await this.mongoInterface.insertOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  },  event  )
                         await this.modifyERC20LedgerByEvent( event )
@@ -289,7 +289,7 @@ module.exports =  class TinyFox {
             await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
 
             for(let event of results.events){
-                let existingEvent = this.mongoInterface.findOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  })
+                let existingEvent = await this.mongoInterface.findOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  })
                 if(!existingEvent){
                     await this.mongoInterface.insertOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  },  event  )
                     await this.modifyERC721LedgerByEvent( event )
