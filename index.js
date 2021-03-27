@@ -215,6 +215,7 @@ module.exports =  class TinyFox {
                     if(this.indexingConfig.logging){
                         console.log('ScaleFactor ',stepSizeScaleFactor)
                     }
+                    return 
 
             }else{
 
@@ -225,8 +226,14 @@ module.exports =  class TinyFox {
                 await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
             
                 for(let event of results.events){
-                    await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash , logIndex: event.logIndex  },  event   )
-                    await this.modifyERC20LedgerByEvent(   event )
+                    //await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash , logIndex: event.logIndex  },  event   )
+                    //await this.modifyERC20LedgerByEvent(   event )
+
+                    let existingEvent = this.mongoInterface.findOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  })
+                    if(!existingEvent){
+                        await this.mongoInterface.insertOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  },  event  )
+                        await this.modifyERC20LedgerByEvent( event )
+                    } 
                 }   
 
                 currentBlock = currentBlock + parseInt(blockGap)
@@ -270,6 +277,7 @@ module.exports =  class TinyFox {
             if(this.indexingConfig.logging){
                 console.log('ScaleFactor ',stepSizeScaleFactor)
             }
+            return
 
         }else{
 
@@ -281,8 +289,12 @@ module.exports =  class TinyFox {
             await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
 
             for(let event of results.events){
-                await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  },  event  )
-                await this.modifyERC721LedgerByEvent( event )
+                let existingEvent = this.mongoInterface.findOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  })
+                if(!existingEvent){
+                    await this.mongoInterface.insertOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  },  event  )
+                    await this.modifyERC721LedgerByEvent( event )
+                } 
+               
             }
 
             currentBlock = currentBlock + parseInt(blockGap)
