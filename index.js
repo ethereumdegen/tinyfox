@@ -30,16 +30,16 @@ let ERC20ABI = require( './config/contracts/SuperERC20ABI.json' )
 const SAFE_EVENT_COUNT = 7000
 const LOW_EVENT_COUNT = 50
 
-var stepSizeScaleFactor = 1
-
-var currentBlock
 
 
 module.exports =  class TinyFox {
 
     constructor(  )
     {
-       
+        this.stepSizeScaleFactor = 1
+
+        this.currentIndexingBlock = -1
+        
     }
 
     async init( mongoOptions ){
@@ -92,11 +92,11 @@ module.exports =  class TinyFox {
         
         let existingState = await this.mongoInterface.findOne('tinyfox_state', {})
         if(!existingState){ 
-           currentBlock = indexingConfig.startBlock 
-           let tinyfoxState = {  currentEventFilterBlock: currentBlock  }
+           this.currentIndexingBlock = indexingConfig.startBlock 
+           let tinyfoxState = {  currentEventFilterBlock: this.currentIndexingBlock  }
            await this.mongoInterface.insertOne('tinyfox_state', tinyfoxState)
         }else{
-            currentBlock = existingState.currentEventFilterBlock
+            this.currentIndexingBlock = existingState.currentEventFilterBlock
         } 
 
         this.indexUpdater = setInterval(this.indexData.bind(this), indexingConfig.indexRate)
@@ -130,14 +130,14 @@ module.exports =  class TinyFox {
     }
 
     getScaledCourseBlockGap(){
-        return parseInt( this.indexingConfig.courseBlockGap / stepSizeScaleFactor )
+        return parseInt( this.indexingConfig.courseBlockGap / this.stepSizeScaleFactor )
     }
 
     async indexData(){    
 
         let tinyfoxState = await this.mongoInterface.findOne('tinyfox_state', {})
 
-        let currentEventFilterBlock = parseInt(currentBlock) //tinyfoxState.currentEventFilterBlock
+        let currentEventFilterBlock = parseInt(this.currentIndexingBlock) //tinyfoxState.currentEventFilterBlock
 
         if(this.indexingConfig.logging){
             console.log('index data starting at ', currentEventFilterBlock, this.indexingConfig.contractAddress)
@@ -155,7 +155,7 @@ module.exports =  class TinyFox {
     
     
              
-            await this.mongoInterface.updateCustomAndFindOne('tinyfox_state', {}, { $set:{currentEventFilterBlock: currentBlock, synced:false}   } )
+            await this.mongoInterface.updateCustomAndFindOne('tinyfox_state', {}, { $set:{currentEventFilterBlock: this.currentIndexingBlock, synced:false}   } )
     
 
         }else if( currentEventFilterBlock + this.indexingConfig.fineBlockGap < this.maxBlockNumber ){
@@ -167,7 +167,7 @@ module.exports =  class TinyFox {
             } 
 
 
-            await this.mongoInterface.updateCustomAndFindOne('tinyfox_state', {}, { $set:{currentEventFilterBlock: currentBlock, synced:true}   } )
+            await this.mongoInterface.updateCustomAndFindOne('tinyfox_state', {}, { $set:{currentEventFilterBlock: this.currentIndexingBlock, synced:true}   } )
     
             
      
@@ -211,9 +211,9 @@ module.exports =  class TinyFox {
           
 
             if(!results || results.events.length > SAFE_EVENT_COUNT  ){
-                    stepSizeScaleFactor  = parseInt(stepSizeScaleFactor * 2)
+                    this.stepSizeScaleFactor  = parseInt(this.stepSizeScaleFactor * 2)
                     if(this.indexingConfig.logging){
-                        console.log('ScaleFactor ',stepSizeScaleFactor)
+                        console.log('ScaleFactor ',this.stepSizeScaleFactor)
                     }
                     return 
 
@@ -236,12 +236,12 @@ module.exports =  class TinyFox {
                     } 
                 }   
 
-                currentBlock = currentBlock + parseInt(blockGap)
+                this.currentIndexingBlock = this.currentIndexingBlock + parseInt(blockGap)
 
                 if(results.events.length < LOW_EVENT_COUNT){
-                    stepSizeScaleFactor  = Math.max(  parseInt(stepSizeScaleFactor / 2) , 1)
+                    this.stepSizeScaleFactor  = Math.max(  parseInt(this.stepSizeScaleFactor / 2) , 1)
                     if(this.indexingConfig.logging){
-                        console.log('ScaleFactor ',stepSizeScaleFactor)
+                        console.log('ScaleFactor ',this.stepSizeScaleFactor)
                     }
                 }
                 
@@ -273,9 +273,9 @@ module.exports =  class TinyFox {
        
 
         if(!results || results.events.length > SAFE_EVENT_COUNT  ){
-            stepSizeScaleFactor  = parseInt(stepSizeScaleFactor * 2)
+            this.stepSizeScaleFactor  = parseInt(this.stepSizeScaleFactor * 2)
             if(this.indexingConfig.logging){
-                console.log('ScaleFactor ',stepSizeScaleFactor)
+                console.log('ScaleFactor ',this.stepSizeScaleFactor)
             }
             return
 
@@ -297,13 +297,13 @@ module.exports =  class TinyFox {
                
             }
 
-            currentBlock = currentBlock + parseInt(blockGap)
+            this.currentIndexingBlock = this.currentIndexingBlock + parseInt(blockGap)
         
 
             if(results.events.length < LOW_EVENT_COUNT){
-                stepSizeScaleFactor  = Math.max(  parseInt(stepSizeScaleFactor / 2) , 1)
+                this.stepSizeScaleFactor  = Math.max(  parseInt(this.stepSizeScaleFactor / 2) , 1)
                 if(this.indexingConfig.logging){
-                    console.log('ScaleFactor ',stepSizeScaleFactor)
+                    console.log('ScaleFactor ',this.stepSizeScaleFactor)
                 }
             }
 
