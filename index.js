@@ -182,16 +182,15 @@ module.exports =  class TinyFox {
          let scaledBlockGap = parseInt( blockGap / stepSizeScaleFactor  )  
          let endBlock = startBlock + Math.max(scaledBlockGap - 1 , 1)     
 
-
+        try{
             let results = await this.getContractEvents( contract, "allEvents", startBlock, endBlock )
-
+        }catch(resultsError){
+            console.error('Request Error: ', results.error)
+        }
         //need better error catch
 
             if(this.indexingConfig.logging){
-                
-                if(results.error){
-                    console.log('Request Error: ', results.error)
-                }
+                 
 
                 if(results.events && results.events.length == 0){
                     console.log('zero results', results)
@@ -199,16 +198,13 @@ module.exports =  class TinyFox {
 
                 if(results.events && results.events.length > SAFE_EVENT_COUNT){
                     console.log('excessive results', results)
-                }
-
-             
-                
-            
+                } 
+                 
             }
 
           
 
-            if(!results || results.error || results.events.length > SAFE_EVENT_COUNT  ){
+            if(!results || results.events.length > SAFE_EVENT_COUNT  ){
                     stepSizeScaleFactor  = parseInt(stepSizeScaleFactor * 2)
                     if(this.indexingConfig.logging){
                         console.log('ScaleFactor ',stepSizeScaleFactor)
@@ -254,18 +250,15 @@ module.exports =  class TinyFox {
         let scaledBlockGap = parseInt( blockGap / stepSizeScaleFactor  )  
         let endBlock = startBlock + Math.max(scaledBlockGap - 1 , 1)     
 
+        try{
+            let results = await this.getContractEvents( contract, 'Transfer' , startBlock, endBlock )
+        }catch(resultsError){
+            console.error('Request Error: ', results.error)
+        }
 
-        let results = await this.getContractEvents( contract, 'Transfer' , startBlock, endBlock )
+       
 
-
-        if(this.indexingConfig.logging){
-            if(results.error){
-                console.log('Request Error:', results.error)
-            }
-       }
-
-
-        if(!results || results.error || results.events.length > SAFE_EVENT_COUNT  ){
+        if(!results || results.events.length > SAFE_EVENT_COUNT  ){
             stepSizeScaleFactor  = parseInt(stepSizeScaleFactor * 2)
             if(this.indexingConfig.logging){
                 console.log('ScaleFactor ',stepSizeScaleFactor)
