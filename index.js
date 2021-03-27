@@ -140,7 +140,7 @@ module.exports =  class TinyFox {
         let currentEventFilterBlock = parseInt(currentBlock) //tinyfoxState.currentEventFilterBlock
 
         if(this.indexingConfig.logging){
-            console.log('index data starting at ', currentEventFilterBlock)
+            console.log('index data starting at ', currentEventFilterBlock, this.indexingConfig.contractAddress)
         }
         
         let courseBlockGap = this.getScaledCourseBlockGap(  )
