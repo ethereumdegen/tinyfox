@@ -27,7 +27,7 @@ let ERC721ABI = require( './config/contracts/ERC721ABI.json' )
 let ERC20ABI = require( './config/contracts/SuperERC20ABI.json' )
 
 
-const SAFE_EVENT_COUNT = 700
+const SAFE_EVENT_COUNT = 7000
 const LOW_EVENT_COUNT = 50
 
 var stepSizeScaleFactor = 1
@@ -185,29 +185,39 @@ module.exports =  class TinyFox {
 
             let results = await this.getContractEvents( contract, "allEvents", startBlock, endBlock )
 
+        //need better error catch
+
             if(this.indexingConfig.logging){
-                console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
-            
-                if(results.events.length == 0){
+                
+                if(results.error){
+                    console.log('Request Error: ', results.error)
+                }
+
+                if(results.events && results.events.length == 0){
                     console.log('zero results', results)
                 }
 
-                if(results.events.length > SAFE_EVENT_COUNT){
+                if(results.events && results.events.length > SAFE_EVENT_COUNT){
                     console.log('excessive results', results)
                 }
+
+             
                 
             
             }
 
           
 
-            if(results.events.length > SAFE_EVENT_COUNT  ){
+            if(!results || results.error || results.events.length > SAFE_EVENT_COUNT  ){
                     stepSizeScaleFactor  = parseInt(stepSizeScaleFactor * 2)
                     if(this.indexingConfig.logging){
                         console.log('ScaleFactor ',stepSizeScaleFactor)
                     }
 
             }else{
+
+                console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
+               
 
                 //save in mongo  
                 await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
@@ -249,17 +259,23 @@ module.exports =  class TinyFox {
 
 
         if(this.indexingConfig.logging){
-            console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
-        }
+            if(results.error){
+                console.log('Request Error:', results.error)
+            }
+       }
 
 
-        if(results.events.length > SAFE_EVENT_COUNT  ){
+        if(!results || results.error || results.events.length > SAFE_EVENT_COUNT  ){
             stepSizeScaleFactor  = parseInt(stepSizeScaleFactor * 2)
             if(this.indexingConfig.logging){
                 console.log('ScaleFactor ',stepSizeScaleFactor)
             }
 
         }else{
+
+            if(this.indexingConfig.logging){
+                console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
+            }
 
             //save in mongo 
             await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
