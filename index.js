@@ -183,7 +183,7 @@ module.exports =  class TinyFox {
          let endBlock = startBlock + Math.max(scaledBlockGap - 1 , 1)     
 
         try{
-            let results = await this.getContractEvents( contract, "allEvents", startBlock, endBlock )
+            var results = await this.getContractEvents( contract, "allEvents", startBlock, endBlock )
         }catch(resultsError){
             console.error('Request Error: ', results.error)
         }
@@ -251,7 +251,7 @@ module.exports =  class TinyFox {
         let endBlock = startBlock + Math.max(scaledBlockGap - 1 , 1)     
 
         try{
-            let results = await this.getContractEvents( contract, 'Transfer' , startBlock, endBlock )
+            var results = await this.getContractEvents( contract, 'Transfer' , startBlock, endBlock )
         }catch(resultsError){
             console.error('Request Error: ', results.error)
         }
