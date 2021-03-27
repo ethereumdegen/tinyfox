@@ -192,11 +192,11 @@ module.exports =  class TinyFox {
             if(this.indexingConfig.logging){
                  
 
-                if(results.events && results.events.length == 0){
+                if(results && results.events && results.events.length == 0){
                     console.log('zero results', results)
                 }
 
-                if(results.events && results.events.length > SAFE_EVENT_COUNT){
+                if(results && results.events && results.events.length > SAFE_EVENT_COUNT){
                     console.log('excessive results', results)
                 } 
                  
