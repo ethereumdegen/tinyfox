@@ -189,7 +189,7 @@ module.exports =  class TinyFox {
                 console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
             }
 
-            console.log('results', results)
+          //  console.log('results', results)
 
             if(results.events.length > SAFE_EVENT_COUNT  ){
                     stepSizeScaleFactor  = parseInt(stepSizeScaleFactor * 2)
