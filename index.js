@@ -395,6 +395,8 @@ module.exports =  class TinyFox {
 
          let eventName = event.event 
 
+       
+
         let outputs = event.returnValues
  
         let contractAddress = event.address.toLowerCase()
@@ -403,8 +405,10 @@ module.exports =  class TinyFox {
             console.log('WARN: unknown event', event )
             return
         }
+
+        eventName = eventName.toLowerCase()
         
-        if(eventName.toLowerCase() == 'transfer'){
+        if(eventName == 'transfer'){
 
             let from = outputs['0'].toLowerCase()
             let to = outputs['1'].toLowerCase()
@@ -419,7 +423,7 @@ module.exports =  class TinyFox {
             await this.modifyERC20LedgerApproval(  contractAddress, from ,to  , amount * -1 ) 
 
         }
-        if(eventName.toLowerCase() == 'approval'){
+        else if(eventName == 'approval'){
 
             let from = outputs['0'].toLowerCase()
             let to = outputs['1'].toLowerCase()
@@ -428,7 +432,7 @@ module.exports =  class TinyFox {
             await this.setERC20LedgerApproval(   contractAddress , from, to,  amount   ) 
 
         }
-        if(eventName.toLowerCase() == 'mint'){
+        else if(eventName == 'mint'){
 
             let to = outputs['0'].toLowerCase() 
             let amount = parseInt(outputs['1']) 
@@ -436,7 +440,7 @@ module.exports =  class TinyFox {
             await this.modifyERC20LedgerBalance(   to ,contractAddress , amount )  
 
         }
-        if(eventName.toLowerCase() == 'deposit'){
+        else if(eventName == 'deposit'){
 
             let to = outputs['0'].toLowerCase() 
             let amount = parseInt(outputs['1']) 
@@ -445,7 +449,7 @@ module.exports =  class TinyFox {
 
         }
 
-        if(eventName.toLowerCase() == 'withdrawal'){
+        else if(eventName == 'withdrawal'){
 
             let from = outputs['0'].toLowerCase() 
             let amount = parseInt(outputs['1']) 
