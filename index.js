@@ -28,7 +28,7 @@ let ERC20ABI = require( './config/contracts/SuperERC20ABI.json' )
 
 
 var SAFE_EVENT_COUNT = 7000
-var LOW_EVENT_COUNT = 50
+var LOW_EVENT_COUNT = 500
 
 
 
