@@ -176,16 +176,15 @@ module.exports =  class TinyFox {
             console.log('index data starting at ', cIndexingBlock, this.indexingConfig.contractAddress)
         }
         
-        let courseBlockGap = this.getScaledCourseBlockGap(  )
+        let scaledCourseBlockGap = this.getScaledCourseBlockGap(  )
 
-        let remainingBlockGap = parseInt(this.maxBlockNumber - cIndexingBlock -  1)
-
-        if(cIndexingBlock + courseBlockGap < this.maxBlockNumber){
+       
+        if(cIndexingBlock + scaledCourseBlockGap < this.maxBlockNumber){
 
             if(this.indexingConfig.contractType.toLowerCase() == 'erc721'){
-                await this.indexERC721Data(cIndexingBlock, this.indexingConfig.courseBlockGap )
+                await this.indexERC721Data(cIndexingBlock, scaledCourseBlockGap )
             }else{
-                await this.indexERC20Data(cIndexingBlock, this.indexingConfig.courseBlockGap )
+                await this.indexERC20Data(cIndexingBlock, scaledCourseBlockGap )
             }
     
     
@@ -194,6 +193,10 @@ module.exports =  class TinyFox {
     
 
         }else if( cIndexingBlock + this.indexingConfig.fineBlockGap < this.maxBlockNumber ){
+
+            let remainingBlockGap = parseInt(this.maxBlockNumber - cIndexingBlock -  1)
+
+            
          
             if(this.indexingConfig.contractType.toLowerCase() == 'erc721'){
                 await this.indexERC721Data(cIndexingBlock, remainingBlockGap )
