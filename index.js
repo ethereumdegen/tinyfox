@@ -231,11 +231,7 @@ module.exports =  class TinyFox {
         }catch(resultsError){
             console.error('Request Error: ', results)
 
-            this.stepSizeScaleFactor  = parseInt(this.stepSizeScaleFactor * 2)
-            if(this.indexingConfig.logging){
-                console.log('ScaleFactor ',this.stepSizeScaleFactor)
-            }
-
+            
         }
         //need better error catch
 
