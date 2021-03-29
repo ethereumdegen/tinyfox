@@ -27,8 +27,8 @@ let ERC721ABI = require( './config/contracts/ERC721ABI.json' )
 let ERC20ABI = require( './config/contracts/SuperERC20ABI.json' )
 
 
-const SAFE_EVENT_COUNT = 7000
-const LOW_EVENT_COUNT = 50
+var SAFE_EVENT_COUNT = 7000
+var LOW_EVENT_COUNT = 50
 
 
 
@@ -49,6 +49,8 @@ module.exports =  class TinyFox {
 
         this.mongoInterface = new MongoInterface( ) 
         await this.mongoInterface.init( 'tinyfox_'.concat(mongoOptions.suffix) , mongoOptions )
+
+        
         
     }
 
@@ -78,12 +80,18 @@ module.exports =  class TinyFox {
             indexingConfig.fineBlockGap = 50;
         }
 
+        if(indexingConfig.safeEventCount){
+            SAFE_EVENT_COUNT = parseInt(indexingConfig.safeEventCount)
+        }
+
     
 
         //this.currentEventFilterBlock = indexingConfig.startBlock;
 
         //this.maxBlockNumber = await Web3Helper.getBlockNumber(this.web3)
         await this.updateBlockNumber()
+
+        this.updateLedger(  )
 
         if(this.maxBlockNumber == null){
             console.error('TinyFox cannot fetch the blocknumber: Stopping Process')
@@ -102,6 +110,31 @@ module.exports =  class TinyFox {
         this.indexUpdater = setInterval(this.indexData.bind(this), indexingConfig.indexRate)
 
         this.blockNumberUpdater = setInterval(this.updateBlockNumber.bind(this), indexingConfig.updateBlockNumberRate)
+    }
+
+    async updateLedger(){
+        
+
+        let usingERC721 = (this.indexingConfig.contractType.toLowerCase() == 'erc721')
+
+        let newEventsArray = await this.mongoInterface.findAll('event_list',{hasAffectedLedger: null })
+
+        if(this.indexingConfig.logging && newEventsArray.length > 0){
+            console.log('update ledger: ', newEventsArray.length)
+          }
+
+        for(let event of newEventsArray){
+            if(  usingERC721  ){  
+                await this.modifyERC721LedgerByEvent( event )
+            }else{ 
+                await this.modifyERC20LedgerByEvent( event )
+            }  
+
+            await this.mongoInterface.updateOne('event_list', {_id: event._id }, {hasAffectedLedger: true })
+        }
+       
+
+        setTimeout( this.updateLedger.bind(this)  , 1000 );
     }
 
     stopIndexing(){
@@ -219,25 +252,36 @@ module.exports =  class TinyFox {
 
             }else{
 
-                console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
-               
+                if(this.indexingConfig.logging){
+                    console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
+                }
 
                 //save in mongo  
-                await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
-            
-                for(let event of results.events){
-                    //await this.mongoInterface.upsertOne('event_list', {transactionHash: event.transactionHash , logIndex: event.logIndex  },  event   )
-                    //await this.modifyERC20LedgerByEvent(   event )
+                let existingEventData = await this.mongoInterface.findOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock })
+                if(!existingEventData){
+                    await this.mongoInterface.insertOne('event_data',  results    )
 
-                    let existingEvent = await this.mongoInterface.findOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  })
+                    if(results.events && results.events.length > 0){
+                        await this.mongoInterface.insertMany('event_list',  results.events  )
+                    }
+                   
+                } 
+
+
+            
+               /* for(let event of results.events){
+                    
                     if(!existingEvent){
-                        await this.mongoInterface.insertOne('event_list',  event  )
+                        //await this.mongoInterface.insertOne('event_list',  event  )
                         await this.modifyERC20LedgerByEvent( event )
                     } 
                 }   
+                */
+
 
                 this.currentIndexingBlock = startBlock + parseInt(blockGap)
                 console.log('this.currentIndexingBlock',this.currentIndexingBlock)
+
                 if(results.events.length < LOW_EVENT_COUNT){
                     this.stepSizeScaleFactor  = Math.max(  parseInt(this.stepSizeScaleFactor / 2) , 1)
                     if(this.indexingConfig.logging){
@@ -285,17 +329,26 @@ module.exports =  class TinyFox {
                 console.log('saved event data ', results.startBlock, ":", results.endBlock, ' Count: ' , results.events.length)
             }
 
-            //save in mongo 
-            await this.mongoInterface.upsertOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock }, results    )
 
-            for(let event of results.events){
-                let existingEvent = await this.mongoInterface.findOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  })
+            let existingEventData = await this.mongoInterface.findOne('event_data', {contractAddress: results.contractAddress, startBlock: results.startBlock })
+            if(!existingEventData){
+                await this.mongoInterface.insertOne('event_data',  results    )
+
+                if(results.events && results.events.length > 0){
+                await this.mongoInterface.insertMany('event_list',  results.events  )
+                }
+            } 
+
+
+            //save in mongo 
+            /*  for(let event of results.events){
+                //let existingEvent = await this.mongoInterface.findOne('event_list', {transactionHash: event.transactionHash, logIndex: event.logIndex  })
                 if(!existingEvent){
-                    await this.mongoInterface.insertOne('event_list',  event  )
+                    //await this.mongoInterface.insertOne('event_list',  event  )
                     await this.modifyERC721LedgerByEvent( event )
                 } 
                
-            }
+            }*/
 
             this.currentIndexingBlock = startBlock + parseInt(blockGap)
         
