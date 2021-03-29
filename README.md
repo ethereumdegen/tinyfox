@@ -1,6 +1,7 @@
 # 🦊 tinyfox 
 Simple lightweight data aggregator for Transfer/Approval events of ERC20 and ERC721 tokens 
 
+    Npm install tinyfox
 
 
 #### How to use (In NodeJS) 
