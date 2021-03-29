@@ -229,7 +229,7 @@ module.exports =  class TinyFox {
         try{
             var results = await this.getContractEvents( contract, "allEvents", startBlock, endBlock )
         }catch(resultsError){
-            console.error('Request Error: ', results.error)
+            console.error('Request Error: ', results)
 
             this.stepSizeScaleFactor  = parseInt(this.stepSizeScaleFactor * 2)
             if(this.indexingConfig.logging){
