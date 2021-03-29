@@ -117,7 +117,7 @@ module.exports =  class TinyFox {
 
         let usingERC721 = (this.indexingConfig.contractType.toLowerCase() == 'erc721')
 
-        let newEventsArray = await this.mongoInterface.findAll('event_list',{hasAffectedLedger: null })
+        let newEventsArray = await this.mongoInterface.findAllWithLimit('event_list',{hasAffectedLedger: null }, 5000)
 
         if(this.indexingConfig.logging && newEventsArray.length > 0){
             console.log('update ledger: ', newEventsArray.length)
@@ -196,7 +196,7 @@ module.exports =  class TinyFox {
 
             let remainingBlockGap = parseInt(this.maxBlockNumber - cIndexingBlock -  1)
 
-            
+
          
             if(this.indexingConfig.contractType.toLowerCase() == 'erc721'){
                 await this.indexERC721Data(cIndexingBlock, remainingBlockGap )
